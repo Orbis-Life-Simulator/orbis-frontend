@@ -1,4 +1,3 @@
-// src/components/Character.js
 import React, { useState } from 'react';
 import { Circle, Text, Tag, Label } from 'react-konva';
 
@@ -17,6 +16,16 @@ function Character({ charData }) {
     setShowTooltip(false);
   };
 
+  const tooltipText = `Nome: ${charData.name} (Idade: ${charData.idade})
+    Vida: ${charData.current_health}
+    Fome: ${charData.fome} / 100
+    Energia: ${charData.energia} / 100
+    ---
+    Bravura: ${charData.bravura}
+    Cautela: ${charData.cautela}
+    Sociabilidade: ${charData.sociabilidade}
+    Ganância: ${charData.ganancia}`;
+
   return (
     <>
       <Circle
@@ -30,13 +39,22 @@ function Character({ charData }) {
         onMouseLeave={handleMouseLeave}
       />
       {showTooltip && (
-        <Label x={charData.position_x + 10} y={charData.position_y - 10}>
-          <Tag fill={'#f0f0f0'} pointerDirection={'down'} pointerWidth={10} pointerHeight={10} lineJoin={'round'} shadowColor={'black'} shadowBlur={10} shadowOpacity={0.5}/>
+        <Label x={charData.position_x} y={charData.position_y - 10}>
+          <Tag 
+            fill={'#f0f0f0'} 
+            pointerDirection={'down'} 
+            pointerWidth={10} 
+            pointerHeight={10} 
+            lineJoin={'round'} 
+            shadowColor={'black'} 
+            shadowBlur={10} 
+            shadowOpacity={0.5}
+          />
           <Text
-            text={`Nome: ${charData.name}\nVida: ${charData.current_health}\nEstado: ${charData.current_state}`}
+            text={tooltipText}
             fontFamily={'Calibri'}
             fontSize={14}
-            padding={5}
+            padding={8}
             fill={'black'}
           />
         </Label>

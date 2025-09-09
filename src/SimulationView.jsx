@@ -1,7 +1,13 @@
+// SimulationView.js (Nenhuma mudança necessária, mas confirmado como correto)
+
 import React, { useState, useEffect, useRef } from 'react';
-import { Stage, Layer, Rect, Text, Star } from 'react-konva';
+import { Stage, Layer, Rect, Text, Star, Image } from 'react-konva';
+import useImage from 'use-image';
+
 import EventLogPanel from './EventLogPanel';
-import Character from './components/Character';
+import Character from './components/Character'; // O componente que atualizamos!
+
+import mapBackgroundUrl from './assets/map_background.jpeg'; 
 
 const WORLD_ID = 1;
 const API_BASE_URL = 'http://localhost:8000';
@@ -9,6 +15,11 @@ const TICK_INTERVAL = 1000;
 
 const clanColorMap = { 1: '#3498db', 2: '#2c3e50', 3: '#2ecc71', 4: '#f1c40f', 5: '#c0392b', 6: '#7f8c8d' };
 const resourceColorMap = { 1: '#27ae60', 2: '#27ae60', 3: '#7f8c8d', 4: '#964B00', 5: '#626567' };
+
+const BackgroundLayer = ({ imageUrl, width, height }) => {
+  const [image] = useImage(imageUrl);
+  return <Image image={image} x={0} y={0} width={width} height={height} />;
+};
 
 function SimulationView() {
   const [worldState, setWorldState] = useState(null);
@@ -27,14 +38,13 @@ function SimulationView() {
     } catch (error) {
       console.error("Falha ao enviar o comando de tick:", error);
     }
-
-    // só agenda o próximo tick se ainda estiver tocando
+    // A lógica de polling via timeout será substituída pelo WebSocket,
+    // mas a mantemos aqui para o botão de "Avançar 1 Tick".
     if (isPlaying) {
       timeoutRef.current = setTimeout(handleTick, TICK_INTERVAL);
     }
   };
 
-  // Carregar estado inicial + websocket
   useEffect(() => {
     const fetchInitialState = async () => {
       try {
@@ -57,33 +67,37 @@ function SimulationView() {
     ws.onclose = () => setIsConnected(false);
     ws.onmessage = (event) => {
       const updatedState = JSON.parse(event.data);
+      // Atualiza os estados com os novos dados recebidos via WebSocket
       setWorldState(updatedState.world);
       setCharacters(updatedState.characters);
       setEvents(updatedState.events);
       setTerritories(updatedState.territories);
       setResourceNodes(updatedState.resourceNodes);
     };
+    
+    // Cleanup: fecha a conexão WebSocket quando o componente é desmontado
     return () => ws.close();
   }, []);
 
   const stageWidth = worldState?.map_width || 1000;
-  const stageHeight = worldState?.map_height || 800;
+  const stageHeight = worldState?.map_height || 1000; // Ajustado para ser um quadrado por padrão
+  
+  const backgroundImageUrl = mapBackgroundUrl;
 
-  // Iniciar loop
   const startSimulation = () => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     setIsPlaying(true);
+    // Inicia o ciclo de ticks via setTimeout. O WebSocket vai atualizar a UI.
     timeoutRef.current = setTimeout(handleTick, TICK_INTERVAL);
   };
 
-  // Pausar loop
   const pauseSimulation = () => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     timeoutRef.current = null;
     setIsPlaying(false);
   };
 
-  // Limpeza ao desmontar
+  // Cleanup effect para garantir que o timeout seja limpo ao desmontar o componente
   useEffect(() => {
     return () => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
@@ -92,10 +106,11 @@ function SimulationView() {
 
   return (
     <div style={{ padding: '10px 20px' }}>
-      {/* <h1>Painel de Controle de Orbis</h1> */}
-      <div>
+      <div> 
         <p>
-          Status: {isConnected ? 'Conectado' : 'Desconectado'} | Tick: {worldState?.current_tick || 0} | Personagens: {characters.length}
+          Status: {isConnected ? <span style={{color: 'green'}}>Conectado</span> : <span style={{color: 'red'}}>Desconectado</span>} | 
+          Tick: {worldState?.current_tick || 0} | 
+          Personagens: {characters.length}
         </p>
         <div style={{ marginBottom: '10px' }}>
           {isPlaying ? (
@@ -111,6 +126,11 @@ function SimulationView() {
         <div style={{ flexGrow: 1 }}>
           <Stage width={stageWidth} height={stageHeight}>
             <Layer>
+              <BackgroundLayer 
+                imageUrl={backgroundImageUrl} 
+                width={stageWidth} 
+                height={stageHeight} 
+              />
               {territories.map(terr => (
                 <Rect
                   key={`terr-${terr.id}`}
@@ -133,6 +153,7 @@ function SimulationView() {
                 />
               ))}
               {characters.map(char => (
+                // O componente Character agora usa os novos dados corretamente
                 <Character key={char.id} charData={char} />
               ))}
             </Layer>
