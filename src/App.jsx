@@ -1,7 +1,8 @@
-// src/App.js
 import React, { useState } from "react";
 import SimulationView from "./SimulationView";
 import AdminPanel from "./AdminPanel";
+import Login from "./components/Login";
+import Register from "./components/Register";
 
 const appStyle = {
   display: "flex",
@@ -10,48 +11,46 @@ const appStyle = {
   width: "100vw",
 };
 
-const navStyle = {
-  backgroundColor: "#333",
-  color: "white",
-  padding: "10px 20px",
-  display: "flex",
-  gap: "20px",
-  alignItems: "center",
-  justifyContent: "space-between",
-};
-
-const buttonStyle = {
-  background: "none",
-  border: "1px solid white",
-  color: "white",
-  padding: "5px 10px",
-  cursor: "pointer",
-};
-
 function App() {
-  const [activeView, setActiveView] = useState("simulation"); // 'simulation' ou 'admin'
+  const [authScreen, setAuthScreen] = useState('login');
+  const [activeView, setActiveView] = useState("simulation");
+
+  const handleLogin = (email, senha) => setAuthScreen('app');
+  const handleRegister = (email, senha, senha2) => setAuthScreen('app');
+
+  if (authScreen === 'login') {
+    return <Login onLogin={handleLogin} onSwitchToRegister={() => setAuthScreen('register')} />;
+  }
+  if (authScreen === 'register') {
+    return <Register onRegister={handleRegister} onSwitchToLogin={() => setAuthScreen('login')} />;
+  }
 
   return (
     <div style={appStyle}>
-      <nav style={navStyle}>
-        <h2>Orbis Life Simulator</h2>
-        <div style={{display: "flex", gap: "10px"}}>
-          <button
-            style={buttonStyle}
-            onClick={() => setActiveView("simulation")}
+      <div className="main-bg">
+        <div className="main-header">ORBIS LIFE SIMULATOR</div>
+        
+        <div className="main-nav">
+          <button 
+            className={`nav-btn ${activeView === 'simulation' ? 'nav-btn-active' : ''}`}
+            onClick={() => setActiveView('simulation')}
           >
-            Simulação
+            SIMULAÇÃO
           </button>
-          <button style={buttonStyle} onClick={() => setActiveView("admin")}>
-            Administração
+          <button 
+            className={`nav-btn ${activeView === 'admin' ? 'nav-btn-active' : ''}`}
+            onClick={() => setActiveView('admin')}
+          >
+            GERENCIAR
           </button>
         </div>
-      </nav>
 
-      {/* Renderização condicional da tela ativa */}
-      <div style={{ flexGrow: 1, overflow: "auto" }}>
-        {activeView === "simulation" && <SimulationView />}
-        {activeView === "admin" && <AdminPanel />}
+        <div className="main-line"></div>
+        
+        <div style={{ flexGrow: 1, overflow: "hidden" }}>
+          {activeView === "simulation" && <SimulationView />}
+          {activeView === "admin" && <AdminPanel />}
+        </div>
       </div>
     </div>
   );

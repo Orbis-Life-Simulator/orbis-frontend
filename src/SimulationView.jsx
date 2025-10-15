@@ -1,11 +1,9 @@
-// SimulationView.js (Nenhuma mudança necessária, mas confirmado como correto)
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Stage, Layer, Rect, Text, Star, Image } from 'react-konva';
 import useImage from 'use-image';
 
 import EventLogPanel from './EventLogPanel';
-import Character from './components/Character'; // O componente que atualizamos!
+import Character from './components/Character';
 
 import mapBackgroundUrl from './assets/map_background.jpeg'; 
 
@@ -27,8 +25,10 @@ function SimulationView() {
   const [events, setEvents] = useState([]);
   const [territories, setTerritories] = useState([]);
   const [resourceNodes, setResourceNodes] = useState([]);
+  // isConnected controla se o WebSocket está ativo
   const [isConnected, setIsConnected] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
+  // isPlaying controla se a simulação foi explicitamente iniciada (botão INICIAR/PLAY)
+  const [isPlaying, setIsPlaying] = useState(false); 
 
   const timeoutRef = useRef(null);
 
@@ -38,8 +38,6 @@ function SimulationView() {
     } catch (error) {
       console.error("Falha ao enviar o comando de tick:", error);
     }
-    // A lógica de polling via timeout será substituída pelo WebSocket,
-    // mas a mantemos aqui para o botão de "Avançar 1 Tick".
     if (isPlaying) {
       timeoutRef.current = setTimeout(handleTick, TICK_INTERVAL);
     }
@@ -56,8 +54,11 @@ function SimulationView() {
         setEvents(initialState.events);
         setTerritories(initialState.territories);
         setResourceNodes(initialState.resourceNodes);
+        // Se a chamada inicial for bem-sucedida, consideramos conectado.
+        setIsConnected(true); 
       } catch (error) {
         console.error("Falha ao buscar estado inicial:", error);
+        setIsConnected(false);
       }
     };
     fetchInitialState();
@@ -65,9 +66,12 @@ function SimulationView() {
     const ws = new WebSocket(`ws://localhost:8000/ws/${WORLD_ID}`);
     ws.onopen = () => setIsConnected(true);
     ws.onclose = () => setIsConnected(false);
+    ws.onerror = (err) => {
+        console.error("WebSocket error:", err);
+        setIsConnected(false);
+    };
     ws.onmessage = (event) => {
       const updatedState = JSON.parse(event.data);
-      // Atualiza os estados com os novos dados recebidos via WebSocket
       setWorldState(updatedState.world);
       setCharacters(updatedState.characters);
       setEvents(updatedState.events);
@@ -75,19 +79,17 @@ function SimulationView() {
       setResourceNodes(updatedState.resourceNodes);
     };
     
-    // Cleanup: fecha a conexão WebSocket quando o componente é desmontado
     return () => ws.close();
   }, []);
 
-  const stageWidth = worldState?.map_width || 1000;
-  const stageHeight = worldState?.map_height || 1000; // Ajustado para ser um quadrado por padrão
-  
+  const stageWidth = 796;
+  const stageHeight = 693;
   const backgroundImageUrl = mapBackgroundUrl;
 
   const startSimulation = () => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    // ATENÇÃO: Muda isPlaying para true ao clicar em INICIAR/PLAY
     setIsPlaying(true);
-    // Inicia o ciclo de ticks via setTimeout. O WebSocket vai atualizar a UI.
     timeoutRef.current = setTimeout(handleTick, TICK_INTERVAL);
   };
 
@@ -97,39 +99,41 @@ function SimulationView() {
     setIsPlaying(false);
   };
 
-  // Cleanup effect para garantir que o timeout seja limpo ao desmontar o componente
   useEffect(() => {
     return () => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
   }, []);
 
-  return (
-    <div style={{ padding: '10px 20px' }}>
-      <div> 
-        <p>
-          Status: {isConnected ? <span style={{color: 'green'}}>Conectado</span> : <span style={{color: 'red'}}>Desconectado</span>} | 
-          Tick: {worldState?.current_tick || 0} | 
-          Personagens: {characters.length}
-        </p>
-        <div style={{ marginBottom: '10px' }}>
-          {isPlaying ? (
-            <button onClick={pauseSimulation} style={{ marginRight: '10px' }}>Pausar</button>
-          ) : (
-            <button onClick={startSimulation} style={{ marginRight: '10px' }}>Iniciar</button>
-          )}
-          <button onClick={handleTick} disabled={isPlaying}>Avançar 1 Tick</button>
-        </div>
-      </div>
-      
-      <div style={{ display: 'flex', height: stageHeight, border: '2px solid black' }}>
-        <div style={{ flexGrow: 1 }}>
-          <Stage width={stageWidth} height={stageHeight}>
-            <Layer>
-              <BackgroundLayer 
-                imageUrl={backgroundImageUrl} 
-                width={stageWidth} 
-                height={stageHeight} 
+  const isMapBW = !isPlaying;
+
+return (
+  <div style={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'flex-start' }}>
+    <div className="main-content">
+      <div className="main-left">
+  {!isPlaying ? (
+    <button
+      className="start-btn"
+      onClick={startSimulation}
+      style={{ marginBottom: 32 }}
+    >
+      INICIAR
+    </button>
+  ) : (
+    <div className="action-bar">
+      <button className="action-btn" onClick={handleTick}>AGIR</button>
+      <div className="action-info">AÇÕES: {worldState?.current_tick || 0}</div>
+      <div className="action-info">PERSONAGENS : {characters.length}</div>
+    </div>
+  )}
+
+  <div className={isPlaying ? "map-container" : "map-container map-bw"}>
+    <Stage width={796} height={693}>
+      <Layer>
+        <BackgroundLayer
+          imageUrl={backgroundImageUrl}
+          width={796}
+          height={693}
               />
               {territories.map(terr => (
                 <Rect
@@ -153,16 +157,30 @@ function SimulationView() {
                 />
               ))}
               {characters.map(char => (
-                // O componente Character agora usa os novos dados corretamente
                 <Character key={char.id} charData={char} />
               ))}
             </Layer>
           </Stage>
         </div>
-        <EventLogPanel events={events} />
+      </div>
+      
+      {/* Painel de Eventos */}
+      <div className="main-right">
+        <div className="main-card">
+          <h2>Histórico De Eventos</h2>
+          <div className="main-card-content">
+            {events.length === 0
+              ? <div style={{ color: "#EDEDED", textAlign: "center" }}>A simulação ainda não foi iniciada.</div>
+              : <div style={{ width: '100%', height: '100%', overflowY: 'auto', padding: '0px', display: 'block', textAlign: 'left' }}>
+                  {events.map((ev, i) => <div key={i} style={{ color: "#EDEDED", fontSize: 18, marginBottom: 8, lineHeight: '1.2' }}>{ev.text}</div>)}
+                </div>
+            }
+          </div>
+        </div>
       </div>
     </div>
-  );
+  </div>
+);
 }
 
 export default SimulationView;
