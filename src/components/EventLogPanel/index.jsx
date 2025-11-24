@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { LogList, LogItem, Timestamp } from './styles';
+import api from '../../services/api';
+import { LogList, LogItem } from './styles';
 
-const API_BASE_URL = 'http://localhost:8000';
 const REFRESH_INTERVAL = 3000;
 
 const formatEvent = (event) => {
@@ -9,82 +9,70 @@ const formatEvent = (event) => {
 
   switch (eventType) {
     case 'AI_DECISION':
-      return null;
     case 'CHARACTER_MOVE_WANDER':
-      return `${payload.character.name} está vagando.`;
-    case 'CHARACTER_MOVE_ATTACK':
-      return `${payload.character.name} está se aproximando para atacar.`;
+      return null;
     case 'COMBAT_ACTION':
-      return `${payload.attacker.name} atacou ${payload.defender.name} causando ${payload.damageDealt} de dano.`;
+      return `⚔️ ${payload.attacker.name} atacou ${payload.defender.name} causando ${payload.damageDealt} de dano.`;
     case 'CHARACTER_DEATH':
-      if (payload.killed_by) {
-        return `${payload.character.name} foi morto em combate por ${payload.killed_by.name}.`;
+      if (payload.killed_by && payload.killed_by.name) {
+        return `💀 ${payload.character.name} foi morto em combate por ${payload.killed_by.name}.`;
       }
-      return `${payload.character.name} morreu por ${payload.reason}.`;
-    case 'GATHER_RESOURCE':
-      return `${payload.character_id} coletou um recurso.`;
+      return `💀 ${payload.character.name} morreu de ${payload.reason}.`;
+    case 'CHARACTER_FLEE':
+      return `🏃 ${payload.character.name} está fugindo de ${payload.fleeing_from.name}.`;
+    case 'CHARACTER_GATHER':
+      return `⛏️ ${payload.character.name} coletou ${payload.quantity} de ${payload.resource_type.name}.`;
+    case 'CHARACTER_EAT':
+      return `🍴 ${payload.character.name} comeu para saciar a fome.`;
+    case 'CHARACTER_MOVE_ATTACK':
+      return `🎯 ${payload.character.name} avança para atacar ${payload.target.name}.`;
+    case 'CHARACTER_MOVE_GATHER':
+      return ` resourceful ${payload.character.name} vai em direção a um recurso.`;
+    case 'ALLIANCE_FORMED':
+      return `🤝 O ${payload.clanA.name} e o ${payload.clanB.name} formaram uma aliança!`;
+    case 'CHARACTER_BUILD_HOUSE':
+      return `🏠 ${payload.character.name} construiu uma casa!`;
     default:
       return eventType;
   }
 };
 
-
 const EventLogPanel = ({ worldId, isPlaying }) => {
   const [events, setEvents] = useState([]);
   const [error, setError] = useState(null);
 
-  const fetchEvents = async () => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/events/${worldId}?limit=50`);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const data = await response.json();
-      setEvents(data);
-      setError(null);
-    } catch (e) {
-      console.error("Falha ao buscar eventos:", e);
-      setError("Não foi possível carregar os eventos.");
-    }
-  };
-
   useEffect(() => {
+    const fetchEvents = async () => {
+      if (!worldId) return;
+      try {
+        const response = await api.get(`/events/${worldId}?limit=50`);
+        setEvents(response.data);
+        setError(null);
+      } catch (e) {
+        console.error("Falha ao buscar eventos:", e);
+        setError("Não foi possível carregar os eventos.");
+      }
+    };
+  
     fetchEvents();
-
+    
     let intervalId = null;
     if (isPlaying) {
       intervalId = setInterval(fetchEvents, REFRESH_INTERVAL);
     }
     
-    return () => {
-      if (intervalId) {
-        clearInterval(intervalId);
-      }
-    };
+    return () => clearInterval(intervalId);
   }, [worldId, isPlaying]);
 
-  if (error) {
-    return <p style={{ color: 'red' }}>{error}</p>;
-  }
-
-  if (events.length === 0) {
-    return <p style={{ color: '#ccc' }}>Nenhum evento registrado ainda.</p>;
-  }
+  if (error) return <p style={{ color: 'red' }}>{error}</p>;
+  if (events.length === 0) return <p style={{ color: '#ccc' }}>Nenhum evento registrado ainda.</p>;
 
   return (
     <LogList>
       {events.map((event) => {
         const formattedText = formatEvent(event);
         if (!formattedText) return null;
-
-        const eventTime = new Date(event.timestamp).toLocaleTimeString();
-
-        return (
-          <LogItem key={event.eventId}>
-            <Timestamp>[{eventTime}]</Timestamp>
-            {formattedText}
-          </LogItem>
-        );
+        return <LogItem key={event.eventId}>{formattedText}</LogItem>;
       })}
     </LogList>
   );
