@@ -1,25 +1,18 @@
 import { useState } from 'react';
 import { FaEnvelope, FaLock } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
-
-import api from '../../services/api'; 
+import { useAuth } from '../../context/AuthContext';
 
 import {
-  PageContainer, 
-  MainTitle, 
-  LoginBox, 
-  FormTitle, 
-  InputWrapper, 
-  Icon, 
-  StyledInput, 
-  StyledButton,
-  SwitchLink
+    PageContainer, MainTitle, LoginBox, FormTitle,
+    InputWrapper, Icon, StyledInput, StyledButton, SwitchLink
 } from './styles';
 
-const Login = ({ onLogin }) => {
+const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-    const [error, setError] = useState('');
+  const [error, setError] = useState('');
+  const { login } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (event) => {
@@ -27,24 +20,10 @@ const Login = ({ onLogin }) => {
     setError('');
 
     try {
-      const formData = new FormData();
-      formData.append('username', email);
-      formData.append('password', password);
-
-      const response = await api.post('/users/login', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
-      
-      const { access_token } = response.data;
-      
-      localStorage.setItem('accessToken', access_token);
-      
-      onLogin();
-      
+      await login(email, password);
     } catch (err) {
       console.error("Falha no login:", err);
       setError('E-mail ou senha incorretos.');
-      localStorage.removeItem('accessToken');
     }
   }
 

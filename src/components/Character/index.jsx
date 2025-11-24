@@ -1,54 +1,48 @@
-import { Group, Circle, Text } from 'react-konva';
+import { Group, Image, Text } from 'react-konva';
 
-const speciesColorMap = {
-  'Anão': '#c0392b',
-  'Humano': '#3498db',
-  'Elfo': '#2ecc71',
-  'Fada': '#9b59b6',
-  'Goblin': '#f1c40f',
-  'Orc': '#2c3e50',
-  'Troll': '#7f8c8d',
-  'Zumbi': '#16a085',
-  'default': '#ffffff'
-};
+const CHARACTER_SIZE = 24;
 
-const Character = ({ charData, scale = { x: 1, y: 1 } }) => {
+const Character = ({ charData, scale = { x: 1, y: 1 }, characterImage }) => {
   if (!charData) return null;
 
-  const px = charData.position?.x ?? charData.pos?.x ?? charData.x ?? charData.coordinates?.x ?? 0;
-  const py = charData.position?.y ?? charData.pos?.y ?? charData.y ?? charData.coordinates?.y ?? 0;
+  const px = charData.position?.x ?? 0;
+  const py = charData.position?.y ?? 0;
+  const x = px * scale.x;
+  const y = py * scale.y;
 
-  const x = (typeof px === 'number' ? px : parseFloat(px || 0)) * (scale.x ?? 1);
-  const y = (typeof py === 'number' ? py : parseFloat(py || 0)) * (scale.y ?? 1);
-
-  const speciesName = charData.species?.name ?? charData.species ?? 'default';
-  const color = speciesColorMap[speciesName] || speciesColorMap.default;
-
-  const label = charData.name ?? charData.displayName ?? `#${charData.id ?? charData._id ?? '?'}`;
-
-  const radius = 9;
+  const label = charData.name ?? `#${charData._id ?? '?'}`;
 
   return (
     <Group x={x} y={y}>
-      <Circle
-        radius={radius}
-        fill={color}
-        stroke="#FFFFFF"
-        strokeWidth={2}
-        shadowColor="black"
-        shadowBlur={6}
-        shadowOpacity={0.6}
-      />
-
+      {characterImage ? (
+        <Image
+          image={characterImage}
+          width={CHARACTER_SIZE}
+          height={CHARACTER_SIZE}
+          offsetX={CHARACTER_SIZE / 2}
+          offsetY={CHARACTER_SIZE / 2}
+          shadowColor="black"
+          shadowBlur={8}
+          shadowOpacity={0.7}
+        />
+      ) : (
+        <Circle
+          radius={CHARACTER_SIZE / 2}
+          fill="red"
+          stroke="#FFFFFF"
+          strokeWidth={1}
+        />
+      )}
+      
       <Text
         text={label}
         fontSize={12}
-        fontFamily="Roboto"
+        fontFamily="Roboto, sans-serif"
         fill="white"
-        x={-Math.min(80, label.length * 5)}
-        y={radius + 4}
+        y={(CHARACTER_SIZE / 2) + 4}
+        offsetX={label.length * 3}
         stroke="black"
-        strokeWidth={0.4}
+        strokeWidth={0.5}
       />
     </Group>
   );
