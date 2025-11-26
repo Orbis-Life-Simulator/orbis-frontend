@@ -1,58 +1,78 @@
-import React, { useState } from "react";
-import SimulationView from "./SimulationView";
-import AdminPanel from "./AdminPanel";
-import Login from "./components/Login";
-import Register from "./components/Register";
+import { Routes, Route, Navigate } from "react-router-dom";
+import { GlobalStyle } from "./styles/global.js";
+import { AuthProvider, useAuth } from "./context/AuthContext";
 
-const appStyle = {
-  display: "flex",
-  flexDirection: "column",
-  height: "100vh",
-  width: "100vw",
+// Importe suas páginas
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import WorldSelector from "./pages/WorldSelector";
+import SimulationView from "./pages/SimulationView";
+import CreatorMode from "./pages/Storyteller";
+import Analysis from "./pages/Analysis";
+
+const ProtectedRoute = ({ children }) => {
+  const { isAuthenticated } = useAuth();
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+  return children;
 };
 
-function App() {
-  const [authScreen, setAuthScreen] = useState('login');
-  const [activeView, setActiveView] = useState("simulation");
-
-  const handleLogin = (email, senha) => setAuthScreen('app');
-  const handleRegister = (email, senha, senha2) => setAuthScreen('app');
-
-  if (authScreen === 'login') {
-    return <Login onLogin={handleLogin} onSwitchToRegister={() => setAuthScreen('register')} />;
-  }
-  if (authScreen === 'register') {
-    return <Register onRegister={handleRegister} onSwitchToLogin={() => setAuthScreen('login')} />;
-  }
+const AppRoutes = () => {
+  const { logout } = useAuth();
 
   return (
-    <div style={appStyle}>
-      <div className="main-bg">
-        <div className="main-header">ORBIS LIFE SIMULATOR</div>
-        
-        <div className="main-nav">
-          <button 
-            className={`nav-btn ${activeView === 'simulation' ? 'nav-btn-active' : ''}`}
-            onClick={() => setActiveView('simulation')}
-          >
-            SIMULAÇÃO
-          </button>
-          <button 
-            className={`nav-btn ${activeView === 'admin' ? 'nav-btn-active' : ''}`}
-            onClick={() => setActiveView('admin')}
-          >
-            GERENCIAR
-          </button>
-        </div>
+    <Routes>
+      <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
 
-        <div className="main-line"></div>
-        
-        <div style={{ flexGrow: 1, overflow: "hidden" }}>
-          {activeView === "simulation" && <SimulationView />}
-          {activeView === "admin" && <AdminPanel />}
-        </div>
-      </div>
-    </div>
+      <Route
+        path="/"
+        element={
+          <ProtectedRoute>
+            <WorldSelector onLogout={logout} />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/simulation/:worldId"
+        element={
+          <ProtectedRoute>
+            <SimulationView onLogout={logout} />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/creator/:worldId"
+        element={
+          <ProtectedRoute>
+            <CreatorMode />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/analysis/:worldId"
+        element={
+          <ProtectedRoute>
+            <Analysis />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route path="*" element={<Navigate to="/" />} />
+    </Routes>
+  );
+};
+
+
+function App() {
+  return (
+    <>
+      <GlobalStyle />
+      <AuthProvider>
+        <AppRoutes />
+      </AuthProvider>
+    </>
   );
 }
 
